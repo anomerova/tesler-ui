@@ -191,9 +191,10 @@ const selectTableCellInit: Epic = (action$, store) => action$.ofType(types.selec
 
 const showAllTableRecordsInit: Epic = (action$, store) => action$.ofType(types.showAllTableRecordsInit)
 .mergeMap((action) => {
+    const state = store.getState()
     const resultObservables: Array<Observable<AnyAction>> = []
-
-    const {bcName, route, cursor} = action.payload
+    const route = state.router
+    const {bcName, cursor} = action.payload
 
     resultObservables.push(Observable.of(
         $do.bcChangeCursors({ cursorsMap: { [bcName]: null }})

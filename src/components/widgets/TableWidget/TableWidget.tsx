@@ -14,7 +14,6 @@ import * as styles from './TableWidget.less'
 import {FieldType, ViewSelectedCell} from '../../../interfaces/view'
 import Field, {emptyMultivalue} from '../../Field/Field'
 import MultivalueHover from '../../ui/Multivalue/MultivalueHover'
-import {Route} from '../../../interfaces/router'
 import {Operation, OperationGroup} from '../../../interfaces/operation'
 import ColumnTitle from '../../ColumnTitle/ColumnTitle'
 import cn from 'classnames'
@@ -37,13 +36,12 @@ interface TableWidgetProps extends TableWidgetOwnProps {
     data: DataItem[],
     rowMetaFields: RowMetaField[],
     limitBySelf?: boolean,
-    route: Route,
     cursor: string,
     selectedCell: ViewSelectedCell,
     pendingDataItem: PendingDataItem,
     hasNext?: boolean,
     onDrillDown: (widgetName: string, bcName: string, cursor: string, fieldKey: string) => void,
-    onShowAll: (bcName: string, cursor: string, route: Route) => void,
+    onShowAll: (bcName: string, cursor: string) => void,
 
     onSelectRow: (bcName: string, cursor: string) => void,
     onSelectCell: (cursor: string, widgetName: string, fieldKey: string) => void,
@@ -244,7 +242,7 @@ export function TableWidget(props: TableWidgetProps) {
     })
 
     const handleShowAll = () => {
-        props.onShowAll(props.meta.bcName, props.cursor, props.route)
+        props.onShowAll(props.meta.bcName, props.cursor)
     }
 
     const handleOperation = React.useCallback(() => {
@@ -310,7 +308,6 @@ function mapStateToProps(store: Store, ownProps: TableWidgetOwnProps) {
         rowMetaFields: fields,
         limitBySelf,
         bcName,
-        route: store.router,
         cursor,
         hasNext,
         selectedCell: store.view.selectedCell,
@@ -323,8 +320,8 @@ function mapDispatchToProps(dispatch: Dispatch) {
         onSelectCell: (cursor: string, widgetName: string, fieldKey: string) => {
             dispatch($do.selectTableCellInit({ widgetName, rowId: cursor, fieldKey }))
         },
-        onShowAll: (bcName: string, cursor: string, route: Route) => {
-            dispatch($do.showAllTableRecordsInit({ bcName, cursor, route }))
+        onShowAll: (bcName: string, cursor: string) => {
+            dispatch($do.showAllTableRecordsInit({ bcName, cursor }))
         },
         onDrillDown: (widgetName: string, cursor: string, bcName: string, fieldKey: string) => {
             dispatch($do.userDrillDown({widgetName, cursor, bcName, fieldKey}))

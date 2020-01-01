@@ -300,9 +300,15 @@ export class ActionPayloadTypes {
         fieldKey: string,
     } = z
     showAllTableRecordsInit: {
-        bcName: string,
         cursor: string,
-        route: Route
+        /**
+         * @deprecated TODO: Handled in epic instead; remove in 2.0.0
+         */
+        route?: Route
+        /**
+         * @deprecated TODO: Use widgetName instead; remove in 2.0.0
+         */
+        bcName: string,
     } = z
     showNotification: {
         type: AppNotificationType,
