@@ -8,7 +8,7 @@ import {$do} from '../../../actions/actions'
 import {Store} from '../../../interfaces/store'
 import {WidgetListField, WidgetTableMeta} from '../../../interfaces/widget'
 import {RowMetaField} from '../../../interfaces/rowMeta'
-import {DataItem, MultivalueSingleValue, PendingDataItem} from '../../../interfaces/data'
+import {DataItem, MultivalueSingleValue} from '../../../interfaces/data'
 import {buildBcUrl} from '../../../utils/strings'
 import * as styles from './TableWidget.less'
 import {FieldType, ViewSelectedCell} from '../../../interfaces/view'
@@ -26,6 +26,9 @@ import {useTranslation} from 'react-i18next'
 interface TableWidgetOwnProps {
     meta: WidgetTableMeta,
     rowSelection?: TableRowSelection<DataItem>,
+    /**
+     * TODO: Rename to showRowOperations in 2.0.0
+     */
     showRowActions?: boolean,
     allowEdit?: boolean,
     paginationMode?: PaginationMode,
@@ -38,9 +41,7 @@ interface TableWidgetProps extends TableWidgetOwnProps {
     limitBySelf?: boolean,
     cursor: string,
     selectedCell: ViewSelectedCell,
-    pendingDataItem: PendingDataItem,
     hasNext?: boolean,
-    onDrillDown: (widgetName: string, bcName: string, cursor: string, fieldKey: string) => void,
     onShowAll: (bcName: string, cursor: string) => void,
 
     onSelectRow: (bcName: string, cursor: string) => void,
@@ -229,7 +230,7 @@ export function TableWidget(props: TableWidgetProps) {
                     />
                 </div>
             },
-            onCell: (record, rowIndex) => {
+            onCell: record => {
                 return (!props.allowEdit || item.drillDown)
                     ? null
                     : {
@@ -310,8 +311,7 @@ function mapStateToProps(store: Store, ownProps: TableWidgetOwnProps) {
         bcName,
         cursor,
         hasNext,
-        selectedCell: store.view.selectedCell,
-        pendingDataItem: cursor && store.view.pendingDataChanges[bcName] && store.view.pendingDataChanges[bcName][cursor]
+        selectedCell: store.view.selectedCell
     }
 }
 
@@ -322,9 +322,6 @@ function mapDispatchToProps(dispatch: Dispatch) {
         },
         onShowAll: (bcName: string, cursor: string) => {
             dispatch($do.showAllTableRecordsInit({ bcName, cursor }))
-        },
-        onDrillDown: (widgetName: string, cursor: string, bcName: string, fieldKey: string) => {
-            dispatch($do.userDrillDown({widgetName, cursor, bcName, fieldKey}))
         },
         onSelectRow: (bcName: string, cursor: string) => {
             dispatch($do.bcSelectRecord({ bcName, cursor }))

@@ -1,3 +1,7 @@
+/**
+ * Floating menu with available row operations for <TableWidget />
+ */
+
 import React, {FunctionComponent} from 'react'
 import {connect} from 'react-redux'
 import {Dispatch} from 'redux'
