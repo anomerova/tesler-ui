@@ -1,13 +1,7 @@
 import React from 'react'
 import {connect} from 'react-redux'
 import {Dispatch} from 'redux'
-import {
-    Table,
-    Menu,
-    Dropdown,
-    Icon,
-    Skeleton
-} from 'antd'
+import {Table, Dropdown} from 'antd'
 import {ColumnProps, TableRowSelection} from 'antd/es/table'
 import ActionLink from '../../ui/ActionLink/ActionLink'
 import {$do} from '../../../actions/actions'
@@ -21,13 +15,14 @@ import {FieldType, ViewSelectedCell} from '../../../interfaces/view'
 import Field, {emptyMultivalue} from '../../Field/Field'
 import MultivalueHover from '../../ui/Multivalue/MultivalueHover'
 import {Route} from '../../../interfaces/router'
-import {useWidgetOperations} from '../../../hooks'
 import {Operation, OperationGroup} from '../../../interfaces/operation'
 import ColumnTitle from '../../ColumnTitle/ColumnTitle'
 import cn from 'classnames'
 import Pagination from '../../ui/Pagination/Pagination'
 import {PaginationMode} from '../../../interfaces/widget'
 import HierarchyTable from '../../../components/HierarchyTable/HierarchyTable'
+import RowOperations from './RowOperations'
+import {useTranslation} from 'react-i18next'
 
 interface TableWidgetOwnProps {
     meta: WidgetTableMeta,
@@ -41,23 +36,34 @@ interface TableWidgetOwnProps {
 interface TableWidgetProps extends TableWidgetOwnProps {
     data: DataItem[],
     rowMetaFields: RowMetaField[],
-    limitBySelf: boolean,
-    bcName: string,
+    limitBySelf?: boolean,
     route: Route,
     cursor: string,
     selectedCell: ViewSelectedCell,
     pendingDataItem: PendingDataItem,
-    hasNext: boolean,
-    operations: Array<Operation | OperationGroup>,
-    metaInProgress: boolean,
+    hasNext?: boolean,
     onDrillDown: (widgetName: string, bcName: string, cursor: string, fieldKey: string) => void,
     onShowAll: (bcName: string, cursor: string, route: Route) => void,
-    onOperationClick: (bcName: string, operationType: string, widgetName: string) => void,
+
     onSelectRow: (bcName: string, cursor: string) => void,
     onSelectCell: (cursor: string, widgetName: string, fieldKey: string) => void,
+    /**
+     * @deprecated Use meta.bcName directly from ownProps instead; TODO: Remove in 2.0.0
+     */
+    bcName?: string
+    /**
+     * @deprecated Use RowOperations component instead; TODO: Remove in 2.0.0
+     */
+    onOperationClick?: (bcName: string, operationType: string, widgetName: string) => void,
+    /**
+     * @deprecated Use RowOperations component instead; TODO: Remove in 2.0.0
+     */
+    operations?: Array<Operation | OperationGroup>,
 }
 
 export function TableWidget(props: TableWidgetProps) {
+
+    const {t} = useTranslation()
 
     if (props.meta.options && props.meta.options.hierarchy) {
         return <HierarchyTable
@@ -71,7 +77,7 @@ export function TableWidget(props: TableWidgetProps) {
     const tableContainerRef = React.useRef(null)
     const tableBodyRef = React.useRef(null)
     const floatMenuHoveredRecord = React.useRef('')
-    const floatMenuIsOpened = React.useRef(false)
+    const [showRowOperations, setShowRowOperations] = React.useState(false)
     const mouseAboveRow = React.useRef(false)
     const expectedFloatMenuTopValue = React.useRef('') // положение меню, которое должно быть выставлено после закрытия
 
@@ -86,7 +92,7 @@ export function TableWidget(props: TableWidgetProps) {
 
     const onTableMouseLeave = React.useCallback(
         (event: React.MouseEvent<HTMLElement>) => {
-            if (!floatMenuIsOpened.current && floatMenuRef.current) {
+            if (!showRowOperations && floatMenuRef.current) {
                 if (event.relatedTarget) {
                     let checkElement = event.relatedTarget as HTMLElement
                     while (checkElement) {
@@ -105,7 +111,7 @@ export function TableWidget(props: TableWidgetProps) {
 
     const onFloatMenuMouseLeave = React.useCallback(
         (event: React.MouseEvent<HTMLElement>) => {
-            if (!floatMenuIsOpened.current && tableBodyRef.current) {
+            if (!showRowOperations && tableBodyRef.current) {
                 if (event.relatedTarget) {
                     let checkElement = event.relatedTarget as HTMLElement
                     while (checkElement) {
@@ -154,7 +160,7 @@ export function TableWidget(props: TableWidgetProps) {
                     const floatMenuTopValue = `${tableRowRect.top - tableContainerRect.top + 17}px`
                     expectedFloatMenuTopValue.current = floatMenuTopValue
 
-                    if (!floatMenuIsOpened.current) {
+                    if (!showRowOperations) {
                         floatMenuRef.current.style.top = floatMenuTopValue
                         floatMenuHoveredRecord.current = record.id
                     }
@@ -169,10 +175,10 @@ export function TableWidget(props: TableWidgetProps) {
 
     const onMenuVisibilityChange = React.useCallback(
         (visibility: boolean) => {
-            floatMenuIsOpened.current = visibility
+            setShowRowOperations(visibility)
             if (visibility) {
                 if (floatMenuHoveredRecord.current && floatMenuHoveredRecord.current !== props.cursor) {
-                    props.onSelectRow(props.bcName, floatMenuHoveredRecord.current)
+                    props.onSelectRow(props.meta.bcName, floatMenuHoveredRecord.current)
                 }
             } else {
                 if (!mouseAboveRow.current) {
@@ -182,76 +188,7 @@ export function TableWidget(props: TableWidgetProps) {
                 }
             }
         },
-        [props.cursor, props.onSelectRow, props.bcName, props.meta.name]
-    )
-
-    const operations = useWidgetOperations(props.operations, props.meta)
-
-    const rowActionsMenu = React.useMemo(
-        () => {
-            const menuItemList: React.ReactNode[] = []
-            operations.forEach((item: Operation | OperationGroup, index) => {
-                if ((item as OperationGroup).actions) {
-                    const groupOperations: React.ReactNode[] = [];
-                    (item as OperationGroup).actions.forEach(operation => {
-                        if (operation.scope === 'record') {
-                            groupOperations.push(
-                                <Menu.Item
-                                    key={operation.type}
-                                    onClick={() => {
-                                        props.onOperationClick(props.bcName, operation.type, props.meta.name)
-                                    }}
-                                >
-                                    { operation.icon && <Icon type={operation.icon} className={styles.icon} /> }
-                                    {operation.text}
-                                </Menu.Item>
-                            )
-                        }
-                    })
-                    if (groupOperations.length) {
-                        menuItemList.push(
-                            <Menu.ItemGroup key={item.type || item.text} title={item.text}>
-                                {groupOperations.map((v) => v)}
-                            </Menu.ItemGroup>
-                        )
-                    }
-                }
-
-                const ungroupedOperation = (item as Operation)
-                if (ungroupedOperation.scope === 'record') {
-                    menuItemList.push(
-                        <Menu.Item
-                            key={item.type}
-                            onClick={() => {
-                                floatMenuIsOpened.current = false
-                                props.onOperationClick(props.bcName, ungroupedOperation.type, props.meta.name)
-                            }}
-                        >
-                            { ungroupedOperation.icon && <Icon type={ungroupedOperation.icon} className={styles.icon} /> }
-                            {item.text}
-                        </Menu.Item>
-                    )
-                }
-            })
-
-            return <Menu>
-                {(props.metaInProgress)
-                    ? <Menu.Item disabled>
-                        <div className={styles.floatMenuSkeletonWrapper}>
-                            <Skeleton active />
-                        </div>
-                    </Menu.Item>
-                    : (menuItemList.length)
-                        ? menuItemList.map((item) => {
-                            return item
-                        })
-                        : <Menu.Item disabled>
-                            Нет доступных операций
-                        </Menu.Item>
-                }
-            </Menu>
-        },
-        [operations, props.meta.name, props.onOperationClick, props.bcName, props.metaInProgress]
+        [props.cursor, props.onSelectRow, props.meta.bcName, props.meta.name]
     )
 
     const processCellClick = (recordId: string, fieldKey: string) => {
@@ -307,15 +244,21 @@ export function TableWidget(props: TableWidgetProps) {
     })
 
     const handleShowAll = () => {
-        props.onShowAll(props.bcName, props.cursor, props.route)
+        props.onShowAll(props.meta.bcName, props.cursor, props.route)
     }
+
+    const handleOperation = React.useCallback(() => {
+        setShowRowOperations(false)
+    }, [])
 
     return <div
         className={styles.tableContainer}
         ref={tableContainerRef}
     >
         { props.limitBySelf &&
-            <ActionLink onClick={handleShowAll}>Показать остальные записи</ActionLink>
+            <ActionLink onClick={handleShowAll}>
+                {t('Show other records')}
+            </ActionLink>
         }
         <Table
             className={cn(
@@ -329,7 +272,7 @@ export function TableWidget(props: TableWidgetProps) {
             pagination={false}
             onRow={(props.showRowActions) ? onTableRow : null}
         />
-        {!props.disablePagination && <Pagination bcName={props.bcName} mode={props.paginationMode || PaginationMode.page} />}
+        {!props.disablePagination && <Pagination bcName={props.meta.bcName} mode={props.paginationMode || PaginationMode.page} />}
         {(props.showRowActions) &&
         <div
             ref={floatMenuRef}
@@ -340,7 +283,7 @@ export function TableWidget(props: TableWidgetProps) {
                 placement="bottomRight"
                 trigger={['click']}
                 onVisibleChange={onMenuVisibilityChange}
-                overlay={rowActionsMenu}
+                overlay={<RowOperations widgetMeta={props.meta} onClick={handleOperation} />}
                 getPopupContainer={trigger => trigger.parentElement}
             >
                 <div className={styles.dots}>...</div>
@@ -361,9 +304,7 @@ function mapStateToProps(store: Store, ownProps: TableWidgetOwnProps) {
     const cursor = bc && bc.cursor
     const hasNext = bc && bc.hasNext
     const limitBySelf = cursor && store.router.bcPath && store.router.bcPath.includes(`${bcName}/${cursor}`)
-    const operations = store.view.rowMeta[bcName]
-        && store.view.rowMeta[bcName][bcUrl]
-        && store.view.rowMeta[bcName][bcUrl].actions
+
     return {
         data: store.data[ownProps.meta.bcName],
         rowMetaFields: fields,
@@ -373,9 +314,7 @@ function mapStateToProps(store: Store, ownProps: TableWidgetOwnProps) {
         cursor,
         hasNext,
         selectedCell: store.view.selectedCell,
-        pendingDataItem: cursor && store.view.pendingDataChanges[bcName] && store.view.pendingDataChanges[bcName][cursor],
-        operations,
-        metaInProgress: !!store.view.metaInProgress[bcName]
+        pendingDataItem: cursor && store.view.pendingDataChanges[bcName] && store.view.pendingDataChanges[bcName][cursor]
     }
 }
 
@@ -389,9 +328,6 @@ function mapDispatchToProps(dispatch: Dispatch) {
         },
         onDrillDown: (widgetName: string, cursor: string, bcName: string, fieldKey: string) => {
             dispatch($do.userDrillDown({widgetName, cursor, bcName, fieldKey}))
-        },
-        onOperationClick: (bcName: string, operationType: string, widgetName: string) => {
-            dispatch($do.sendOperation({ bcName, operationType, widgetName }))
         },
         onSelectRow: (bcName: string, cursor: string) => {
             dispatch($do.bcSelectRecord({ bcName, cursor }))
