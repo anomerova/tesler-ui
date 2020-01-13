@@ -44,6 +44,7 @@
     "ts-loader": "4.5.0",
     "tslint": "5.18.0",
     "tslint-eslint-rules": "5.4.0",
+    "tslint-jsdoc-rules": "^0.2.0",
     "typed-css-modules": "0.3.5",
     "typescript": "3.5.2",
     "typings-for-css-modules-loader": "1.7.0",
